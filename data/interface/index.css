@@ -184,9 +184,6 @@ button:hover {
     background-size: 48px;
     max-height: calc(100vh - 340px);
   }
-}
-
-@media (max-width: 400px) {
   .extra, .toolbar, .separator {
     display: none;
   }
