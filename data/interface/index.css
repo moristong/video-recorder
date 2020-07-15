@@ -172,6 +172,11 @@ button:hover {
   background-color: rgba(0,0,0,0.05);
 }
 
+html[context="webapp"] .extra,
+html[context="webapp"] .toolbar {
+  display: none;
+}
+
 @media (max-width: 500px) {
   span {
     float: none;
