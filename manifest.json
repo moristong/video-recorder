@@ -1,0 +1,27 @@
+{
+  "version": "0.1.3",
+  "manifest_version": 2,
+  "offline_enabled": true,
+  "name": "Video Recorder",
+  "short_name": "video-recorder",
+  "permissions": ["storage", "downloads"],
+  "background": {"scripts": ["lib/background.js"]},
+  "homepage_url": "https://mybrowseraddon.com/video-recorder.html",
+  "description": "Easily record video & audio from your computer's camera!",
+  "browser_action": {
+    "default_title": "Video Recorder",
+    "default_icon": {
+      "16": "data/icons/16.png",
+      "32": "data/icons/32.png",
+      "48": "data/icons/48.png",
+      "64": "data/icons/64.png"
+    }
+  },
+  "icons": {
+    "16": "data/icons/16.png",
+    "32": "data/icons/32.png",
+    "48": "data/icons/48.png",
+    "64": "data/icons/64.png",
+    "128": "data/icons/128.png"
+  }
+}
