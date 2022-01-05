@@ -2,9 +2,18 @@ var config  = {
   "count": 0,
   "data": [],
   "stream": {},
+  "elements": {},
   "recorder": null,
-  "time": {"start": 0, "stop": 0},
-  "convert": {"page": "https://webbrowsertools.com/convert-to-mp3/"},
+  "permission": {},
+  "time": {
+    "stop": 0,
+    "start": 0
+  },
+  "page": {
+    "camera": "chrome://settings/content/camera",
+    "microphone": "chrome://settings/content/microphone",
+    "convert": "https://webbrowsertools.com/convert-to-mp3/"
+  },
   "addon": {
     "homepage": function () {
       return chrome.runtime.getManifest().homepage_url;
@@ -13,7 +22,8 @@ var config  = {
   "duration": function (ms) {
     var date = new Date(null);
     date.setSeconds(ms / 1000);
-    return date.toISOString().substr(11, 8);
+    /*  */
+    return date.toISOString().slice(11, 19);
   },
   "size": function (s) {
     if (s) {
@@ -23,13 +33,31 @@ var config  = {
       return s + " B";
     } else return '';
   },
-  "stop": {
-    "camera": function () {
-      var tracks = config.stream.combine.getTracks();
-      for (var i = 0; i < tracks.length; i++) tracks[i].stop();
-      if (config.recorder && config.recorder.state !== "inactive") {
-        config.recorder.stop();
-        config.data = [];
+  "app": {
+    "start": async function () {
+      config.permission.camera = config.storage.read("camera-permission") !== undefined ? config.storage.read("camera-permission") : true;
+      config.permission.microphone = config.storage.read("microphone-permission") !== undefined ? config.storage.read("microphone-permission") : false;  
+      /*  */
+      camera.checked = config.permission.camera;
+      microphone.checked = config.permission.microphone;
+      /*  */
+      var action = document.querySelector(".action");
+      await new Promise((resolve, reject) => {window.setTimeout(resolve, 300)});
+      action.removeAttribute("loading");
+    },
+    "stop": {
+      "camera": function () {
+        var tracks = config.stream.combine.getTracks();
+        for (var i = 0; i < tracks.length; i++) {
+          tracks[i].stop();
+          config.stream.combine.removeTrack(tracks[i]);
+        }
+        /*  */
+        if (config.recorder && config.recorder.state !== "inactive") {
+          delete config.stream.combine;
+          config.recorder.stop();
+          config.data = [];
+        }
       }
     }
   },
@@ -116,7 +144,6 @@ var config  = {
       li.textContent = "#" + (++config.count);
       spansize.textContent = config.size(blob.size);
       spanduration.textContent = config.duration(duration.getTime());
-      document.querySelector(".content div").style.background = "none";
       a.download = "Video " + filename.replace(/ /g, '-').replace(/:/g, '-') + ".webm";
       /*  */
       li.appendChild(a);
@@ -124,31 +151,98 @@ var config  = {
       li.appendChild(spanduration);
       list.appendChild(li);
       /*  */
-      config.data = [];
+      config.app.stop.camera();
+      window.setTimeout(function () {a.click()}, 300);
+    },
+    "start": async function () {
+      config.elements.info.camera.removeAttribute("denied");
+      config.elements.info.microphone.removeAttribute("denied");
+      /*  */
+      if (navigator.mediaDevices) {
+        try {
+          config.stream.combine = await navigator.mediaDevices.getUserMedia({
+            "video": config.permission.camera, 
+            "audio": config.permission.microphone
+          });
+          /*  */
+          if (config.stream.combine) {
+            var player = document.getElementById("player");
+            player.srcObject = config.stream.combine;
+          }
+        } catch (e) {
+          var a = await navigator.permissions.query({"name": "camera"});
+          var b = await navigator.permissions.query({"name": "microphone"});
+          var c = a.state === "denied" && config.permission.camera === true;
+          var d = b.state === "denied" && config.permission.microphone === true;
+          /*  */
+          var error = '';
+          if (c && d) error = "Camera & Microphone permissions are denied!\nPlease adjust the permissions and try again.";
+          else if (c) error = "Camera permission is denied!\nPlease adjust the permission and try again.";
+          else if (d) error = "Microphone permission is denied!\nPlease adjust the permission and try again.";
+          else if (config.permission.camera === false) error = "Please mark the - Access Camera - checkbox and try again."
+          else error = "An error has occurred, please try again.";
+          /*  */
+          window.alert(error);
+          /*  */
+          if (config.port.name !== "webapp") {
+            if (a.state === "denied") {
+              config.elements.info.camera.setAttribute("denied", '');
+              chrome.tabs.create({"url": config.page.camera, "active": true});
+            }
+            /*  */
+            if (b.state === "denied") {
+              config.elements.info.microphone.setAttribute("denied", '');
+              chrome.tabs.create({"url": config.page.microphone, "active": true});
+            }
+          }
+        }
+      } else {
+        window.alert("Error! navigator.mediaDevices is not available!");
+      }
     }
   },
   "load": function () {
     var stop = document.getElementById("stop");
-    var audio = document.getElementById("audio");
-    var video = document.getElementById("video");
-    var record = document.getElementById("record");
-    var player = document.getElementById("camera");
+    var start = document.getElementById("start");
+    var player = document.getElementById("player");
+    var camera = document.getElementById("camera");
     var reload = document.getElementById("reload");
-    var cancel = document.getElementById("cancel");
-    var support = document.getElementById("support");
+    var action = document.querySelector(".action");
     var convert = document.getElementById("convert");
+    var support = document.getElementById("support");
     var donation = document.getElementById("donation");
+    var microphone = document.getElementById("microphone");
     /*  */
-    stop.disabled = true;
-    record.disabled = true;
-    cancel.disabled = true;
+    config.elements.info = {};
+    config.elements.info.camera = document.getElementById("camera-permission");
+    config.elements.info.microphone = document.getElementById("microphone-permission");
     /*  */
     reload.addEventListener("click", function () {
       document.location.reload();
     });
     /*  */
+    camera.addEventListener("change", function (e) {
+      config.permission.camera = e.target.checked;
+      config.storage.write("camera-permission", config.permission.camera);
+    });
+    /*  */
+    microphone.addEventListener("change", function (e) {
+      config.permission.microphone = e.target.checked;
+      config.storage.write("microphone-permission", config.permission.microphone);
+    });
+    /*  */
     convert.addEventListener("click", function () {
-      var url = config.convert.page;
+      var url = config.page.convert;
+      chrome.tabs.create({"url": url, "active": true});
+    }, false);
+    /*  */
+    config.elements.info.camera.addEventListener("click", function () {
+      var url = config.page.camera;
+      chrome.tabs.create({"url": url, "active": true});
+    }, false);
+    /*  */
+    config.elements.info.microphone.addEventListener("click", function () {
+      var url = config.page.microphone;
       chrome.tabs.create({"url": url, "active": true});
     }, false);
     /*  */
@@ -167,101 +261,41 @@ var config  = {
     }, false);
     /*  */
     stop.addEventListener("click", function () {
+      action.removeAttribute("recording");
+      /*  */
       if (config.recorder) {
         player.pause();
-        stop.disabled = true;
         player.currentTime = 0;
+        player.srcObject = null;
         config.time.end = new Date();
-        record.removeAttribute("disabled");
         if (config.recorder) config.recorder.stop();
       }
     });
     /*  */
-    record.addEventListener("click", function () {
-      config.recorder = new MediaRecorder(config.stream.combine, {"mimeType": "video/webm"});
-      config.recorder.addEventListener("dataavailable", config.listener.data);
-      config.recorder.addEventListener("stop", config.listener.stop);
+    start.addEventListener("click", async function () {
+      action.setAttribute("loading", '');
+      await config.listener.start();
+      await new Promise((resolve, reject) => {window.setTimeout(resolve, 300)});
+      action.removeAttribute("loading");
       /*  */
-      stop.removeAttribute("disabled");
-      config.time.start = new Date();
-      config.recorder.start();
-      record.disabled = true;
-      player.play();
-    });
-    /*  */
-    cancel.addEventListener("click", function () {
-      config.stop.camera();
-      /*  */
-      player.pause();
-      config.stream = {};
-      stop.disabled = true;
-      record.disabled = true;
-      cancel.disabled = true;
-      player.currentTime = 0;
-      player.srcObject = null;
-      video.removeAttribute("disabled");
-      audio.removeAttribute("disabled");
-    });
-    /*  */
-    audio.addEventListener("click", async function () {
-      if (navigator.mediaDevices) {
-        audio.setAttribute("loading", '');
-        /*  */
-        navigator.mediaDevices.getUserMedia({"video": false, "audio": true}).then(function (e) {
-          audio.disabled = true;
-          config.stream.audio = e;
-          audio.removeAttribute("loading");
-          cancel.removeAttribute("disabled");
-          config.stream.combine = new MediaStream();
+      if (config.stream.combine) {
+        if (config.stream.combine.active) {
+          config.recorder = new MediaRecorder(config.stream.combine, {"mimeType": "video/webm"});
+          config.recorder.addEventListener("dataavailable", config.listener.data);
+          config.recorder.addEventListener("stop", config.listener.stop);
           /*  */
-          if (config.stream.audio) config.stream.combine.addTrack(config.stream.audio.getAudioTracks()[0]);
-          if (config.stream.video) config.stream.combine.addTrack(config.stream.video.getVideoTracks()[0]);
-          if (config.stream.video) player.srcObject = config.stream.combine;
-        }).catch(function (e) {
-          audio.removeAttribute("loading");
-          if (config.port.name !== "webapp") {
-            window.alert("Microphone permission is denied!\nPlease adjust the permissions via the below address and try again.\nchrome://settings/content/microphone");
-            /*  */
-            if (config.port.name !== "webapp") {
-              chrome.tabs.create({"url": "about://settings/content/microphone", "active": true});
-            }
+          if (config.recorder) {
+            action.setAttribute("recording", '');
+            config.time.start = new Date();
+            config.recorder.start();
+            player.play();
           }
-        });
-      } else {
-        console.error("> navigator.mediaDevices is not available!");
+        }
       }
     });
     /*  */
-    video.addEventListener("click", async function () {
-      if (navigator.mediaDevices) {
-        video.setAttribute("loading", '');
-        /*  */
-        navigator.mediaDevices.getUserMedia({"video": true, "audio": false}).then(function (e) {
-          video.disabled = true;
-          config.stream.video = e;
-          video.removeAttribute("loading");
-          record.removeAttribute("disabled");
-          cancel.removeAttribute("disabled");
-          config.stream.combine = new MediaStream();
-          /*  */
-          if (config.stream.audio) config.stream.combine.addTrack(config.stream.audio.getAudioTracks()[0]);
-          if (config.stream.video) config.stream.combine.addTrack(config.stream.video.getVideoTracks()[0]);
-          if (config.stream.video) player.srcObject = config.stream.combine;
-        }).catch(function (e) {
-          video.removeAttribute("loading");
-          if (config.port.name !== "webapp") {
-            window.alert("Camera permission is denied!\nPlease adjust the permissions via the below address and try again.\nchrome://settings/content/camera");
-            /*  */
-            if (config.port.name !== "webapp") {
-              chrome.tabs.create({"url": "about://settings/content/camera", "active": true});
-            }
-          }
-        });
-      } else {
-        console.error("> navigator.mediaDevices is not available!");
-      }
-    });
-    /*  */
+    action.setAttribute("loading", '');
+    config.storage.load(config.app.start);
     window.removeEventListener("load", config.load, false);
   }
 };
