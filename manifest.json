@@ -1,10 +1,8 @@
 {
-  "version": "0.1.7",
+  "version": "0.1.8",
   "manifest_version": 3,
   "offline_enabled": true,
   "name": "Video Recorder",
-  "short_name": "video-recorder",
-  "permissions": ["storage", "contextMenus"],
   "homepage_url": "https://mybrowseraddon.com/video-recorder.html",
   "description": "Easily record video & audio from your computer's camera!",
   "commands": {
@@ -13,6 +11,10 @@
   "background": {
     "service_worker": "background.js"
   },
+  "permissions": [
+    "storage", 
+    "contextMenus"
+  ],
   "action": {
     "default_title": "Video Recorder",
     "default_icon": {
