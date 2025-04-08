@@ -36,11 +36,13 @@ var config  = {
   },
   "app": {
     "start": async function () {
+      const theme = config.storage.read("theme") !== undefined ? config.storage.read("theme") : "light";
       config.permission.camera = config.storage.read("camera-permission") !== undefined ? config.storage.read("camera-permission") : true;
       config.permission.microphone = config.storage.read("microphone-permission") !== undefined ? config.storage.read("microphone-permission") : false;  
       /*  */
       camera.checked = config.permission.camera;
       microphone.checked = config.permission.microphone;
+      document.documentElement.setAttribute("theme", theme !== undefined ? theme : "light");
       /*  */
       const action = document.querySelector(".action");
       await new Promise((resolve, reject) => {window.setTimeout(resolve, 300)});
@@ -205,6 +207,7 @@ var config  = {
   "load": function () {
     const stop = document.getElementById("stop");
     const start = document.getElementById("start");
+    const theme = document.getElementById("theme");
     const player = document.getElementById("player");
     const camera = document.getElementById("camera");
     const reload = document.getElementById("reload");
@@ -251,6 +254,14 @@ var config  = {
     config.elements.info.microphone.addEventListener("click", function () {
       const url = config.page.microphone;
       chrome.tabs.create({"url": url, "active": true});
+    }, false);
+    /*  */
+    theme.addEventListener("click", function () {
+      let attribute = document.documentElement.getAttribute("theme");
+      attribute = attribute === "dark" ? "light" : "dark";
+      /*  */
+      document.documentElement.setAttribute("theme", attribute);
+      config.storage.write("theme", attribute);
     }, false);
     /*  */
     support.addEventListener("click", function () {
